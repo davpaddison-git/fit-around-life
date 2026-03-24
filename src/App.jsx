@@ -346,6 +346,7 @@ Notes: ${latest.notes || "None"}`;
         }
         * {
           box-sizing: border-box;
+          min-width: 0;
         }
         @media (max-width: 900px) {
           .fal-hero {
@@ -370,6 +371,25 @@ Notes: ${latest.notes || "None"}`;
           .fal-header-actions button {
             width: 100%;
           }
+          .fal-hero-meta {
+            grid-template-columns: 1fr !important;
+          }
+          .fal-exercise-card {
+            grid-template-columns: 42px 1fr !important;
+          }
+          .fal-exercise-pill {
+            grid-column: 2 / 3 !important;
+            justify-self: start !important;
+            margin-top: 10px !important;
+            white-space: normal !important;
+          }
+          .fal-glance-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          .fal-glance-value {
+            text-align: left !important;
+          }
         }
       `}</style>
 
@@ -388,7 +408,7 @@ Notes: ${latest.notes || "None"}`;
               </p>
             </div>
 
-            <div style={heroMetaRow}>
+            <div className="fal-hero-meta" style={heroMetaRow}>
               <div style={miniMetaCard}>
                 <div style={miniMetaLabel}>Current session</div>
                 <div style={miniMetaValue}>{adaptedSession.title}</div>
@@ -492,14 +512,12 @@ Notes: ${latest.notes || "None"}`;
                   <div style={sectionLabel}>Today’s plan</div>
                   <h2 style={sectionTitle}>Today’s session</h2>
                 </div>
-                <div style={sectionHelper}>
-                  {adaptedSession.exercises.length} exercises
-                </div>
+                <div style={sectionHelper}>{adaptedSession.exercises.length} exercises</div>
               </div>
 
               <div style={{ display: "grid", gap: "14px" }}>
                 {adaptedSession.exercises.map((exercise, idx) => (
-                  <div key={idx} style={exerciseCard}>
+                  <div key={idx} className="fal-exercise-card" style={exerciseCard}>
                     <div style={exerciseNumber}>{idx + 1}</div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: "18px", color: BRAND.navy }}>
@@ -509,7 +527,7 @@ Notes: ${latest.notes || "None"}`;
                         {exercise.notes}
                       </div>
                     </div>
-                    <div style={smallTargetPill}>{exercise.target}</div>
+                    <div className="fal-exercise-pill" style={smallTargetPill}>{exercise.target}</div>
                   </div>
                 ))}
               </div>
@@ -619,21 +637,21 @@ Notes: ${latest.notes || "None"}`;
               <div style={sectionLabel}>Snapshot</div>
               <h2 style={sectionTitle}>Today at a glance</h2>
               <div style={{ display: "grid", gap: "12px" }}>
-                <div style={glanceRow}>
+                <div className="fal-glance-row" style={glanceRow}>
                   <span style={glanceKey}>Session</span>
-                  <span style={glanceValue}>{adaptedSession.title}</span>
+                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.title}</span>
                 </div>
-                <div style={glanceRow}>
+                <div className="fal-glance-row" style={glanceRow}>
                   <span style={glanceKey}>Focus</span>
-                  <span style={glanceValue}>{adaptedSession.focus}</span>
+                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.focus}</span>
                 </div>
-                <div style={glanceRow}>
+                <div className="fal-glance-row" style={glanceRow}>
                   <span style={glanceKey}>Suggested rounds</span>
-                  <span style={glanceValue}>{adaptedSession.roundGuide}</span>
+                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.roundGuide}</span>
                 </div>
-                <div style={glanceRow}>
+                <div className="fal-glance-row" style={glanceRow}>
                   <span style={glanceKey}>Exercises</span>
-                  <span style={glanceValue}>{adaptedSession.exercises.length}</span>
+                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.exercises.length}</span>
                 </div>
               </div>
             </div>
@@ -856,6 +874,7 @@ const miniMetaValue = {
   color: BRAND.navy,
   fontWeight: 600,
   lineHeight: 1.5,
+  overflowWrap: "anywhere",
 };
 
 const heroSideTop = {
@@ -963,7 +982,7 @@ const exerciseCard = {
   padding: "16px",
   background: "#ffffff",
   display: "grid",
-  gridTemplateColumns: "42px 1fr auto",
+  gridTemplateColumns: "42px minmax(0,1fr) auto",
   gap: "14px",
   alignItems: "start",
 };
@@ -979,6 +998,7 @@ const exerciseNumber = {
   justifyContent: "center",
   fontWeight: 700,
   fontSize: "15px",
+  flexShrink: 0,
 };
 
 const smallTargetPill = {
@@ -1181,6 +1201,7 @@ const glanceValue = {
   color: BRAND.navy,
   fontWeight: 600,
   textAlign: "right",
+  overflowWrap: "anywhere",
 };
 
 function phaseBadge(phase) {
