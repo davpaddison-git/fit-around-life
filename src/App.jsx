@@ -11,7 +11,7 @@ const BRAND = {
   line: "#d9e2ea",
 };
 
-const STORAGE_KEY = "fit-around-life-v2";
+const STORAGE_KEY = "fit-around-life-v3";
 
 const CHALLENGES = [
   "Let one of the kids be your coach for one round.",
@@ -34,6 +34,8 @@ const SESSION_LIBRARY = {
       { name: "Glute bridges", baseReps: 14, unit: "reps", notes: "Pause at the top" },
       { name: "Fast march", baseTime: 30, unit: "sec", notes: "Steady cardio push" },
       { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Brace the core throughout" },
+      { name: "Wall sit", baseTime: 30, unit: "sec", notes: "Sit tall if using a wall" },
+      { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Finish with posture and control" },
     ],
   },
   cardio_core: {
@@ -45,6 +47,8 @@ const SESSION_LIBRARY = {
       { name: "Dead bugs", baseReps: 10, unit: "each side", notes: "Slow quality reps" },
       { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Tall posture, controlled breathing" },
       { name: "Tempo squats", baseReps: 10, unit: "reps", notes: "3 seconds down" },
+      { name: "Fast march", baseTime: 40, unit: "sec", notes: "Steady effort" },
+      { name: "Torso twists", baseTime: 45, unit: "sec", notes: "Stay relaxed through the upper body" },
     ],
   },
   recovery_mobility: {
@@ -56,6 +60,8 @@ const SESSION_LIBRARY = {
       { name: "Hip mobility", baseTime: 90, unit: "sec", notes: "Circles and openers" },
       { name: "Torso twists", baseTime: 60, unit: "sec", notes: "Gentle and rhythmic" },
       { name: "Standing reach + brace", baseReps: 8, unit: "reps", notes: "Keep it easy" },
+      { name: "Side steps", baseTime: 30, unit: "sec", notes: "Just enough to stay moving" },
+      { name: "March on spot", baseTime: 60, unit: "sec", notes: "Easy finish" },
     ],
   },
   balance_stability: {
@@ -67,6 +73,8 @@ const SESSION_LIBRARY = {
       { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Core control" },
       { name: "Side steps", baseTime: 30, unit: "sec", notes: "Stay light on your feet" },
       { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Smooth controlled reps" },
+      { name: "Split squat hold", baseTime: 20, unit: "sec each leg", notes: "Small stabiliser challenge" },
+      { name: "Torso twists", baseTime: 45, unit: "sec", notes: "Stay tall" },
     ],
   },
   mixed_conditioning: {
@@ -78,6 +86,8 @@ const SESSION_LIBRARY = {
       { name: "Fast march", baseTime: 40, unit: "sec", notes: "Build the heart rate" },
       { name: "Glute bridges", baseReps: 12, unit: "reps", notes: "Squeeze at the top" },
       { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Brace and breathe" },
+      { name: "Side steps", baseTime: 35, unit: "sec", notes: "Stay lively" },
+      { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Reset posture at the end" },
     ],
   },
   posture_core: {
@@ -89,6 +99,8 @@ const SESSION_LIBRARY = {
       { name: "Dead bugs", baseReps: 10, unit: "each side", notes: "Quality over speed" },
       { name: "Torso twists", baseTime: 60, unit: "sec", notes: "Easy mobility" },
       { name: "March on spot", baseTime: 90, unit: "sec", notes: "Keep moving" },
+      { name: "Shoulder blade squeeze hold", baseTime: 25, unit: "sec", notes: "Stand tall and relaxed" },
+      { name: "Slow squats", baseReps: 10, unit: "reps", notes: "Finish with easy leg work" },
     ],
   },
   lower_power_light: {
@@ -100,6 +112,8 @@ const SESSION_LIBRARY = {
       { name: "Side steps", baseTime: 35, unit: "sec", notes: "Quick but relaxed" },
       { name: "Glute bridges", baseReps: 14, unit: "reps", notes: "Strong squeeze at the top" },
       { name: "Fast march", baseTime: 30, unit: "sec", notes: "Finish with energy" },
+      { name: "Reverse lunges", baseReps: 8, unit: "each leg", notes: "Stay smooth" },
+      { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Calm reset" },
     ],
   },
 };
@@ -118,6 +132,7 @@ const DEFAULT_STATE = {
   phase: "work",
   timerRunning: false,
   timeLeft: 40,
+  workoutMinutes: 20,
   environment: "garden",
   equipment: [],
   photo: null,
@@ -146,6 +161,7 @@ function loadSavedState() {
       equipment: parsed.equipment || [],
       environment: parsed.environment || "garden",
       photo: parsed.photo || null,
+      workoutMinutes: parsed.workoutMinutes || 20,
     };
   } catch {
     return DEFAULT_STATE;
@@ -234,13 +250,56 @@ function chooseSessionType(history, profile, todayKey) {
   return candidate;
 }
 
-function buildSession(typeKey, profile, history, environment, equipment) {
+function getDurationProfile(minutes) {
+  if (minutes <= 15) {
+    return {
+      exerciseCount: 4,
+      roundsSuggested: 2,
+      workSec: 30,
+      restSec: 15,
+      label: "Quick reset",
+    };
+  }
+
+  if (minutes <= 30) {
+    return {
+      exerciseCount: 5,
+      roundsSuggested: 3,
+      workSec: 40,
+      restSec: 20,
+      label: "Standard session",
+    };
+  }
+
+  if (minutes <= 45) {
+    return {
+      exerciseCount: 6,
+      roundsSuggested: minutes >= 40 ? 4 : 3,
+      workSec: 45,
+      restSec: 20,
+      label: "Longer session",
+    };
+  }
+
+  return {
+    exerciseCount: 7,
+    roundsSuggested: 4,
+    workSec: 50,
+    restSec: 25,
+    label: "Big session",
+  };
+}
+
+function buildSession(typeKey, profile, history, environment, equipment, workoutMinutes) {
   const base = SESSION_LIBRARY[typeKey];
   const progressionLevel = profile.fitnessLevel || 1;
   const previous = history[0];
+  const durationProfile = getDurationProfile(workoutMinutes);
 
-  let roundGuide = progressionLevel <= 1 ? "Aim for 2–3 rounds today." : "Aim for 3 rounds today.";
+  let roundGuide = `Aim for ${durationProfile.roundsSuggested} rounds today.`;
   let coachNote = "A sensible session for today. Stay smooth, not heroic.";
+  let adaptationReasons = [];
+  let environmentTags = [environment, ...equipment];
 
   let exercises = base.exercises.map((raw) => {
     const ex = cloneExercise(raw);
@@ -255,31 +314,31 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       ex.target = `${time} ${ex.unit}`;
     }
 
-    if (previous?.wrist >= 4 && ex.name.toLowerCase().includes("plank")) {
-      ex.name = "Dead bugs";
-      ex.notes = "Swap plank out to protect the wrist";
-      ex.target = `${10 + Math.max(0, progressionLevel - 1) * 2} each side`;
-    }
-
     return ex;
   });
 
   if (previous?.effort === "good" && previous?.energy >= 3 && previous?.wrist <= 2) {
     coachNote = "Nice work last time. This session nudges things forward a touch.";
-    roundGuide = progressionLevel <= 1 ? "Aim for 3 rounds today." : "Aim for 3–4 rounds today.";
   }
 
   if (previous?.effort === "hard") {
     coachNote = "Last session sounded like enough. Keep this one controlled and leave a bit in the tank.";
+    adaptationReasons.push("Recovery bias applied after a hard session");
   }
 
   if (previous?.wrist >= 4) {
     coachNote = "The wrist looked a bit grumpy last time, so today stays friendly and controlled.";
+    adaptationReasons.push("Wrist-friendly choices prioritised");
   }
 
   if (previous?.energy <= 2) {
     coachNote += " An 80% session is a win today.";
+    adaptationReasons.push("Session softened because energy was low");
   }
+
+  adaptationReasons.push(`Session scaled to ${workoutMinutes} minutes`);
+  adaptationReasons.push(`${durationProfile.workSec}s work / ${durationProfile.restSec}s rest`);
+  adaptationReasons.push(`Current fitness level: ${profile.fitnessLevel}`);
 
   // Environment-based adaptations
   if (environment === "garden") {
@@ -288,6 +347,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "60 sec",
       notes: "Use the full space available",
     });
+    adaptationReasons.push("Open outdoor movement added");
   }
 
   if (environment === "room") {
@@ -296,6 +356,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "60 sec",
       notes: "Low-space cardio option",
     });
+    adaptationReasons.push("Low-space cardio added");
   }
 
   if (environment === "park") {
@@ -304,6 +365,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "60 sec",
       notes: "Use open space",
     });
+    adaptationReasons.push("Open space cardio added");
   }
 
   if (environment === "beach") {
@@ -312,6 +374,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "12 reps",
       notes: "Move steadily on uneven ground",
     });
+    adaptationReasons.push("Uneven-surface leg work added");
   }
 
   if (environment === "playground") {
@@ -320,6 +383,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "10 each side",
       notes: "Use low stable edges only",
     });
+    adaptationReasons.push("Playground movement option added");
   }
 
   if (equipment.includes("Chair")) {
@@ -328,6 +392,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "12 reps",
       notes: "Controlled up and down",
     });
+    adaptationReasons.push("Chair strength work added");
   }
 
   if (equipment.includes("Bench")) {
@@ -336,6 +401,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "10 each leg",
       notes: "Use a stable surface",
     });
+    adaptationReasons.push("Bench exercises added");
   }
 
   if (equipment.includes("Wall")) {
@@ -344,6 +410,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "30 sec",
       notes: "Back flat against the wall",
     });
+    adaptationReasons.push("Wall stability work added");
   }
 
   if (equipment.includes("Steps")) {
@@ -352,6 +419,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "15 reps",
       notes: "Use the edge carefully",
     });
+    adaptationReasons.push("Step work added");
   }
 
   if (equipment.includes("Table")) {
@@ -360,6 +428,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "20 sec",
       notes: "Only if very stable and wrist feels okay",
     });
+    adaptationReasons.push("Supported incline option added");
   }
 
   if (equipment.includes("Resistance band")) {
@@ -368,6 +437,7 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "12 reps",
       notes: "Smooth pull and squeeze",
     });
+    adaptationReasons.push("Band pulling work added");
   }
 
   if (equipment.includes("Dumbbells")) {
@@ -376,7 +446,20 @@ function buildSession(typeKey, profile, history, environment, equipment) {
       target: "10 reps",
       notes: "Only if comfortable and available",
     });
+    adaptationReasons.push("Loaded strength work added");
   }
+
+  // Remove risky wrist-heavy options if wrist is sore
+  if (previous?.wrist >= 4) {
+    exercises = exercises.filter(
+      (ex) =>
+        !ex.name.toLowerCase().includes("incline hold") &&
+        !ex.name.toLowerCase().includes("pushup")
+    );
+  }
+
+  // Trim to the right exercise count for the duration
+  exercises = exercises.slice(0, durationProfile.exerciseCount);
 
   return {
     typeKey,
@@ -386,6 +469,12 @@ function buildSession(typeKey, profile, history, environment, equipment) {
     coachNote,
     roundGuide,
     exercises,
+    adaptationReasons: [...new Set(adaptationReasons)],
+    environmentTags: [...new Set(environmentTags.filter(Boolean))],
+    workSec: durationProfile.workSec,
+    restSec: durationProfile.restSec,
+    roundsSuggested: durationProfile.roundsSuggested,
+    durationLabel: durationProfile.label,
   };
 }
 
@@ -408,7 +497,7 @@ export default function App() {
   const [todayKey, setTodayKey] = useState(new Date().toISOString().slice(0, 10));
   const [challengeDone, setChallengeDone] = useState(false);
 
-  // STEP 1 — new state
+  const [workoutMinutes, setWorkoutMinutes] = useState(initial.workoutMinutes || 20);
   const [environment, setEnvironment] = useState(initial.environment || "garden");
   const [equipment, setEquipment] = useState(initial.equipment || []);
   const [photo, setPhoto] = useState(initial.photo || null);
@@ -442,6 +531,7 @@ export default function App() {
         environment,
         equipment,
         photo,
+        workoutMinutes,
       })
     );
   }, [
@@ -462,6 +552,7 @@ export default function App() {
     environment,
     equipment,
     photo,
+    workoutMinutes,
   ]);
 
   const streakCount = useMemo(() => getStreak(history), [history]);
@@ -473,8 +564,8 @@ export default function App() {
   );
 
   const adaptedSession = useMemo(
-    () => buildSession(sessionType, profile, history, environment, equipment),
-    [sessionType, profile, history, environment, equipment]
+    () => buildSession(sessionType, profile, history, environment, equipment, workoutMinutes),
+    [sessionType, profile, history, environment, equipment, workoutMinutes]
   );
 
   useEffect(() => {
@@ -486,13 +577,13 @@ export default function App() {
 
         if (phase === "work") {
           setPhase("rest");
-          return 20;
+          return adaptedSession.restSec;
         } else {
           const nextIndex = currentExerciseIndex + 1;
           if (nextIndex < adaptedSession.exercises.length) {
             setCurrentExerciseIndex(nextIndex);
             setPhase("work");
-            return 40;
+            return adaptedSession.workSec;
           } else {
             setTimerRunning(false);
             return 0;
@@ -502,9 +593,16 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(id);
-  }, [workoutMode, timerRunning, phase, currentExerciseIndex, adaptedSession.exercises.length]);
+  }, [
+    workoutMode,
+    timerRunning,
+    phase,
+    currentExerciseIndex,
+    adaptedSession.exercises.length,
+    adaptedSession.restSec,
+    adaptedSession.workSec,
+  ]);
 
-  // STEP 2 — equipment toggle function
   function toggleEquipment(item) {
     setEquipment((prev) =>
       prev.includes(item)
@@ -513,7 +611,6 @@ export default function App() {
     );
   }
 
-  // STEP 3 — photo handler
   function handlePhoto(e) {
     const file = e.target.files[0];
     if (file) {
@@ -529,15 +626,16 @@ export default function App() {
     setWorkoutMode(true);
     setCurrentExerciseIndex(0);
     setPhase("work");
-    setTimeLeft(40);
+    setTimeLeft(adaptedSession.workSec);
     setTimerRunning(false);
+    setRounds(String(adaptedSession.roundsSuggested));
   }
 
   function stopWorkoutMode() {
     setWorkoutMode(false);
     setCurrentExerciseIndex(0);
     setPhase("work");
-    setTimeLeft(40);
+    setTimeLeft(adaptedSession.workSec);
     setTimerRunning(false);
   }
 
@@ -549,7 +647,7 @@ export default function App() {
     if (currentExerciseIndex < adaptedSession.exercises.length - 1) {
       setCurrentExerciseIndex((prev) => prev + 1);
       setPhase("work");
-      setTimeLeft(40);
+      setTimeLeft(adaptedSession.workSec);
       setTimerRunning(false);
     }
   }
@@ -558,7 +656,7 @@ export default function App() {
     if (currentExerciseIndex > 0) {
       setCurrentExerciseIndex((prev) => prev - 1);
       setPhase("work");
-      setTimeLeft(40);
+      setTimeLeft(adaptedSession.workSec);
       setTimerRunning(false);
     }
   }
@@ -567,13 +665,21 @@ export default function App() {
     let nextFitnessLevel = profile.fitnessLevel;
     let nextProgressionScore = profile.progressionScore;
 
+    // Primary progression signals: effort, energy, wrist, completion
     if (effort === "good" && energy >= 3 && wrist <= 2) {
-      nextProgressionScore += 1;
+      nextProgressionScore += 2;
+    } else if (effort === "easy" && energy >= 4 && wrist <= 2) {
+      nextProgressionScore += 2;
     } else if (effort === "hard" || energy <= 2 || wrist >= 4) {
-      nextProgressionScore = Math.max(0, nextProgressionScore - 1);
+      nextProgressionScore = Math.max(0, nextProgressionScore - 2);
     }
 
-    if (nextProgressionScore >= 3) {
+    // Secondary light influence: duration, rounds, challenge
+    if (workoutMinutes >= 30) nextProgressionScore += 1;
+    if (challengeDone) nextProgressionScore += 1;
+    if (Number(rounds) >= adaptedSession.roundsSuggested) nextProgressionScore += 1;
+
+    if (nextProgressionScore >= 6) {
       nextFitnessLevel += 1;
       nextProgressionScore = 0;
     }
@@ -592,6 +698,7 @@ export default function App() {
       challengeDone,
       environment,
       equipment,
+      workoutMinutes,
     };
 
     setHistory((prev) => [entry, ...prev]);
@@ -602,9 +709,10 @@ export default function App() {
       progressionScore: nextProgressionScore,
       challengeCompletions: prev.challengeCompletions + (challengeDone ? 1 : 0),
       lastSessionType: adaptedSession.typeKey,
+      preferredMinutes: workoutMinutes,
     }));
 
-    setRounds("3");
+    setRounds(String(adaptedSession.roundsSuggested));
     setEffort("good");
     setEnergy(3);
     setWrist(2);
@@ -634,6 +742,7 @@ export default function App() {
     setEnvironment("garden");
     setEquipment([]);
     setPhoto(null);
+    setWorkoutMinutes(20);
   }
 
   const currentExercise = adaptedSession.exercises[currentExerciseIndex];
@@ -653,6 +762,7 @@ Kids joined: ${latest.kidsJoined ? "Yes" : "No"}
 Challenge done: ${latest.challengeDone ? "Yes" : "No"}
 Environment: ${latest.environment}
 Equipment: ${latest.equipment?.join(", ") || "None"}
+Workout length: ${latest.workoutMinutes} min
 Fitness level: ${profile.fitnessLevel}
 Current streak: ${streakCount} day${streakCount === 1 ? "" : "s"}
 Notes: ${latest.notes || "None"}`;
@@ -780,6 +890,9 @@ Notes: ${latest.notes || "None"}`;
                 <div style={timerCircle}>
                   <div style={{ fontSize: "14px", color: BRAND.softText }}>Timer</div>
                   <div style={{ fontSize: "46px", fontWeight: 800, color: BRAND.navy }}>{timeLeft}s</div>
+                  <div style={{ marginTop: "6px", color: BRAND.softText, fontSize: "13px" }}>
+                    Rest: {adaptedSession.restSec}s
+                  </div>
                 </div>
               </div>
             </div>
@@ -815,7 +928,6 @@ Notes: ${latest.notes || "None"}`;
               </div>
             </div>
 
-            {/* STEP 4 — environment UI card */}
             <div style={cardStyle}>
               <div style={sectionLabel}>Environment</div>
               <h2 style={sectionTitle}>Today’s environment</h2>
@@ -878,6 +990,61 @@ Notes: ${latest.notes || "None"}`;
                 )}
               </div>
             </div>
+
+            <div style={cardStyle}>
+              <div style={sectionLabel}>Workout personality</div>
+              <h2 style={sectionTitle}>Session length</h2>
+
+              <div style={{ marginTop: "18px" }}>
+                <div style={labelStyle}>Workout duration</div>
+                <select
+                  value={workoutMinutes}
+                  onChange={(e) => setWorkoutMinutes(Number(e.target.value))}
+                  style={inputStyle}
+                >
+                  <option value={10}>10 min — Quick reset</option>
+                  <option value={15}>15 min — Short session</option>
+                  <option value={20}>20 min — Standard</option>
+                  <option value={25}>25 min</option>
+                  <option value={30}>30 min — Hard day</option>
+                  <option value={35}>35 min</option>
+                  <option value={40}>40 min</option>
+                  <option value={45}>45 min</option>
+                  <option value={50}>50 min</option>
+                  <option value={55}>55 min</option>
+                  <option value={60}>60 min — Big session</option>
+                </select>
+
+                <div style={{ marginTop: "10px", color: BRAND.softText }}>
+                  Time now scales your exercise count, work time, rest time and suggested rounds.
+                </div>
+              </div>
+            </div>
+
+            {adaptedSession.adaptationReasons.length > 0 && (
+              <div style={cardStyle}>
+                <div style={sectionLabel}>AI adjustments</div>
+                <h2 style={sectionTitle}>Workout adapted for</h2>
+
+                <div style={{ marginTop: "12px" }}>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {adaptedSession.environmentTags.map((tag) => (
+                      <div key={tag} style={smallTargetPill}>
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "14px", display: "grid", gap: "6px" }}>
+                    {adaptedSession.adaptationReasons.map((reason, i) => (
+                      <div key={i} style={{ color: BRAND.softText }}>
+                        • {reason}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={cardStyle}>
               <div className="fal-brand-row" style={sectionHeaderRow}>
@@ -1007,6 +1174,14 @@ Notes: ${latest.notes || "None"}`;
                   <span style={glanceKey}>Equipment</span>
                   <span style={glanceValue}>{equipment.length ? equipment.join(", ") : "None"}</span>
                 </div>
+                <div style={glanceRow}>
+                  <span style={glanceKey}>Workout time</span>
+                  <span style={glanceValue}>{workoutMinutes} mins</span>
+                </div>
+                <div style={glanceRow}>
+                  <span style={glanceKey}>Suggested rounds</span>
+                  <span style={glanceValue}>{adaptedSession.roundsSuggested}</span>
+                </div>
               </div>
             </div>
 
@@ -1017,7 +1192,8 @@ Notes: ${latest.notes || "None"}`;
                 <li>Sessions rotate for variety and freshness.</li>
                 <li>Hard days are followed by lighter choices when needed.</li>
                 <li>Consistent strong sessions build your fitness level over time.</li>
-                <li>Your progress and environment are saved locally on this device.</li>
+                <li>Time, environment and equipment all shape the workout.</li>
+                <li>Your progress is saved locally on this device.</li>
               </ol>
             </div>
 
@@ -1040,6 +1216,9 @@ Notes: ${latest.notes || "None"}`;
                       </div>
                       <div style={{ color: BRAND.navy }}>
                         Space: {item.environment} · Equipment: {item.equipment?.join(", ") || "None"}
+                      </div>
+                      <div style={{ color: BRAND.navy }}>
+                        Time: {item.workoutMinutes} mins
                       </div>
                       {item.notes && <div style={{ marginTop: "8px", color: BRAND.softText }}>“{item.notes}”</div>}
                     </div>
