@@ -118,6 +118,9 @@ const DEFAULT_STATE = {
   phase: "work",
   timerRunning: false,
   timeLeft: 40,
+  environment: "garden",
+  equipment: [],
+  photo: null,
   profile: {
     fitnessLevel: 1,
     preferredMinutes: 20,
@@ -132,22 +135,21 @@ function loadSavedState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
+    const parsed = JSON.parse(raw);
     return {
       ...DEFAULT_STATE,
-      ...JSON.parse(raw),
+      ...parsed,
       profile: {
         ...DEFAULT_STATE.profile,
-        ...(JSON.parse(raw).profile || {}),
+        ...(parsed.profile || {}),
       },
+      equipment: parsed.equipment || [],
+      environment: parsed.environment || "garden",
+      photo: parsed.photo || null,
     };
   } catch {
     return DEFAULT_STATE;
   }
-}
-
-function formatTarget(ex) {
-  if (ex.baseReps != null) return `${ex.baseReps} ${ex.unit}`;
-  return `${ex.baseTime} ${ex.unit}`;
 }
 
 function cloneExercise(ex) {
@@ -232,7 +234,7 @@ function chooseSessionType(history, profile, todayKey) {
   return candidate;
 }
 
-function buildSession(typeKey, profile, history) {
+function buildSession(typeKey, profile, history, environment, equipment) {
   const base = SESSION_LIBRARY[typeKey];
   const progressionLevel = profile.fitnessLevel || 1;
   const previous = history[0];
@@ -240,7 +242,7 @@ function buildSession(typeKey, profile, history) {
   let roundGuide = progressionLevel <= 1 ? "Aim for 2–3 rounds today." : "Aim for 3 rounds today.";
   let coachNote = "A sensible session for today. Stay smooth, not heroic.";
 
-  const exercises = base.exercises.map((raw) => {
+  let exercises = base.exercises.map((raw) => {
     const ex = cloneExercise(raw);
 
     if (ex.baseReps != null) {
@@ -279,6 +281,103 @@ function buildSession(typeKey, profile, history) {
     coachNote += " An 80% session is a win today.";
   }
 
+  // Environment-based adaptations
+  if (environment === "garden") {
+    exercises.push({
+      name: "Garden laps",
+      target: "60 sec",
+      notes: "Use the full space available",
+    });
+  }
+
+  if (environment === "room") {
+    exercises.push({
+      name: "March in place",
+      target: "60 sec",
+      notes: "Low-space cardio option",
+    });
+  }
+
+  if (environment === "park") {
+    exercises.push({
+      name: "Brisk shuttle walks",
+      target: "60 sec",
+      notes: "Use open space",
+    });
+  }
+
+  if (environment === "beach") {
+    exercises.push({
+      name: "Soft-surface squats",
+      target: "12 reps",
+      notes: "Move steadily on uneven ground",
+    });
+  }
+
+  if (environment === "playground") {
+    exercises.push({
+      name: "Bench step overs",
+      target: "10 each side",
+      notes: "Use low stable edges only",
+    });
+  }
+
+  if (equipment.includes("Chair")) {
+    exercises.push({
+      name: "Chair sit-to-stands",
+      target: "12 reps",
+      notes: "Controlled up and down",
+    });
+  }
+
+  if (equipment.includes("Bench")) {
+    exercises.push({
+      name: "Bench step ups",
+      target: "10 each leg",
+      notes: "Use a stable surface",
+    });
+  }
+
+  if (equipment.includes("Wall")) {
+    exercises.push({
+      name: "Wall sit",
+      target: "30 sec",
+      notes: "Back flat against the wall",
+    });
+  }
+
+  if (equipment.includes("Steps")) {
+    exercises.push({
+      name: "Step calf raises",
+      target: "15 reps",
+      notes: "Use the edge carefully",
+    });
+  }
+
+  if (equipment.includes("Table")) {
+    exercises.push({
+      name: "Table incline hold",
+      target: "20 sec",
+      notes: "Only if very stable and wrist feels okay",
+    });
+  }
+
+  if (equipment.includes("Resistance band")) {
+    exercises.push({
+      name: "Band rows",
+      target: "12 reps",
+      notes: "Smooth pull and squeeze",
+    });
+  }
+
+  if (equipment.includes("Dumbbells")) {
+    exercises.push({
+      name: "Dumbbell goblet squats",
+      target: "10 reps",
+      notes: "Only if comfortable and available",
+    });
+  }
+
   return {
     typeKey,
     title: `${base.label} · Level ${profile.fitnessLevel}`,
@@ -309,6 +408,11 @@ export default function App() {
   const [todayKey, setTodayKey] = useState(new Date().toISOString().slice(0, 10));
   const [challengeDone, setChallengeDone] = useState(false);
 
+  // STEP 1 — new state
+  const [environment, setEnvironment] = useState(initial.environment || "garden");
+  const [equipment, setEquipment] = useState(initial.equipment || []);
+  const [photo, setPhoto] = useState(initial.photo || null);
+
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     setTodayKey(today);
@@ -335,6 +439,9 @@ export default function App() {
         timerRunning,
         timeLeft,
         profile,
+        environment,
+        equipment,
+        photo,
       })
     );
   }, [
@@ -352,6 +459,9 @@ export default function App() {
     timerRunning,
     timeLeft,
     profile,
+    environment,
+    equipment,
+    photo,
   ]);
 
   const streakCount = useMemo(() => getStreak(history), [history]);
@@ -363,8 +473,8 @@ export default function App() {
   );
 
   const adaptedSession = useMemo(
-    () => buildSession(sessionType, profile, history),
-    [sessionType, profile, history]
+    () => buildSession(sessionType, profile, history, environment, equipment),
+    [sessionType, profile, history, environment, equipment]
   );
 
   useEffect(() => {
@@ -393,6 +503,27 @@ export default function App() {
 
     return () => clearInterval(id);
   }, [workoutMode, timerRunning, phase, currentExerciseIndex, adaptedSession.exercises.length]);
+
+  // STEP 2 — equipment toggle function
+  function toggleEquipment(item) {
+    setEquipment((prev) =>
+      prev.includes(item)
+        ? prev.filter((e) => e !== item)
+        : [...prev, item]
+    );
+  }
+
+  // STEP 3 — photo handler
+  function handlePhoto(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
   function startWorkoutMode() {
     setWorkoutMode(true);
@@ -459,6 +590,8 @@ export default function App() {
       notes,
       kidsJoined,
       challengeDone,
+      environment,
+      equipment,
     };
 
     setHistory((prev) => [entry, ...prev]);
@@ -471,7 +604,7 @@ export default function App() {
       lastSessionType: adaptedSession.typeKey,
     }));
 
-    setRounds(nextFitnessLevel <= 1 ? "3" : "3");
+    setRounds("3");
     setEffort("good");
     setEnergy(3);
     setWrist(2);
@@ -498,6 +631,9 @@ export default function App() {
     setTimeLeft(40);
     setProfile(DEFAULT_STATE.profile);
     setChallengeDone(false);
+    setEnvironment("garden");
+    setEquipment([]);
+    setPhoto(null);
   }
 
   const currentExercise = adaptedSession.exercises[currentExerciseIndex];
@@ -515,6 +651,8 @@ Energy: ${latest.energy}/5
 Wrist: ${latest.wrist}/5
 Kids joined: ${latest.kidsJoined ? "Yes" : "No"}
 Challenge done: ${latest.challengeDone ? "Yes" : "No"}
+Environment: ${latest.environment}
+Equipment: ${latest.equipment?.join(", ") || "None"}
 Fitness level: ${profile.fitnessLevel}
 Current streak: ${streakCount} day${streakCount === 1 ? "" : "s"}
 Notes: ${latest.notes || "None"}`;
@@ -677,6 +815,70 @@ Notes: ${latest.notes || "None"}`;
               </div>
             </div>
 
+            {/* STEP 4 — environment UI card */}
+            <div style={cardStyle}>
+              <div style={sectionLabel}>Environment</div>
+              <h2 style={sectionTitle}>Today’s environment</h2>
+
+              <div style={{ marginTop: "18px" }}>
+                <div style={labelStyle}>Space</div>
+                <select
+                  value={environment}
+                  onChange={(e) => setEnvironment(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="garden">Small garden</option>
+                  <option value="room">Hotel / living room</option>
+                  <option value="park">Park</option>
+                  <option value="beach">Beach</option>
+                  <option value="playground">Playground</option>
+                </select>
+              </div>
+
+              <div style={{ marginTop: "18px" }}>
+                <div style={labelStyle}>Available equipment / objects</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "10px" }}>
+                  {["Chair", "Bench", "Wall", "Steps", "Table", "Resistance band", "Dumbbells"].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleEquipment(item)}
+                      style={{
+                        padding: "9px 14px",
+                        borderRadius: "12px",
+                        border: equipment.includes(item)
+                          ? `2px solid ${BRAND.green}`
+                          : `1px solid ${BRAND.line}`,
+                        background: equipment.includes(item) ? BRAND.paleGreen : "white",
+                        color: BRAND.navy,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: "18px" }}>
+                <div style={labelStyle}>Upload space photo (optional)</div>
+                <input type="file" accept="image/*" onChange={handlePhoto} />
+                {photo && (
+                  <img
+                    src={photo}
+                    alt="Environment preview"
+                    style={{
+                      width: "100%",
+                      marginTop: "12px",
+                      borderRadius: "16px",
+                      border: `1px solid ${BRAND.line}`,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
             <div style={cardStyle}>
               <div className="fal-brand-row" style={sectionHeaderRow}>
                 <div>
@@ -798,12 +1000,12 @@ Notes: ${latest.notes || "None"}`;
                   <span style={glanceValue}>{profile.fitnessLevel}</span>
                 </div>
                 <div style={glanceRow}>
-                  <span style={glanceKey}>Suggested rounds</span>
-                  <span style={glanceValue}>{adaptedSession.roundGuide}</span>
+                  <span style={glanceKey}>Space</span>
+                  <span style={glanceValue}>{environment}</span>
                 </div>
                 <div style={glanceRow}>
-                  <span style={glanceKey}>Challenges completed</span>
-                  <span style={glanceValue}>{profile.challengeCompletions}</span>
+                  <span style={glanceKey}>Equipment</span>
+                  <span style={glanceValue}>{equipment.length ? equipment.join(", ") : "None"}</span>
                 </div>
               </div>
             </div>
@@ -815,7 +1017,7 @@ Notes: ${latest.notes || "None"}`;
                 <li>Sessions rotate for variety and freshness.</li>
                 <li>Hard days are followed by lighter choices when needed.</li>
                 <li>Consistent strong sessions build your fitness level over time.</li>
-                <li>Your progress is saved locally on this device.</li>
+                <li>Your progress and environment are saved locally on this device.</li>
               </ol>
             </div>
 
@@ -837,7 +1039,7 @@ Notes: ${latest.notes || "None"}`;
                         Energy: {item.energy}/5 · Wrist: {item.wrist}/5
                       </div>
                       <div style={{ color: BRAND.navy }}>
-                        Kids joined: {item.kidsJoined ? "Yes" : "No"} · Challenge: {item.challengeDone ? "Yes" : "No"}
+                        Space: {item.environment} · Equipment: {item.equipment?.join(", ") || "None"}
                       </div>
                       {item.notes && <div style={{ marginTop: "8px", color: BRAND.softText }}>“{item.notes}”</div>}
                     </div>
