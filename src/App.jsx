@@ -9,154 +9,363 @@ const BRAND = {
   softText: "#94a3b8",
   warm: "#f5f7fa",
   line: "#d9e2ea",
-  white: "#ffffff",
 };
 
-export default function App() {
-  const starterPlan = [
-    {
-      day: 1,
-      title: "Garden Strength Circuit A",
-      focus: "Legs, core, cardio",
-      exercises: [
-        { name: "Squats", target: "15–20 reps", notes: "Slow and controlled" },
-        { name: "Split squats", target: "10 each leg", notes: "Use balance support if needed" },
-        { name: "Glute bridges", target: "15–20 reps", notes: "Pause at the top" },
-        { name: "Fast march / high knees", target: "30–40 sec", notes: "Choose wrist-friendly cardio" },
-        { name: "Dead bugs or elbow plank", target: "10 each side / 20–40 sec", notes: "Avoid pressure through hands" },
-        { name: "Invisible band pull-aparts", target: "15 reps", notes: "Posture and upper back" },
-      ],
-    },
-    {
-      day: 2,
-      title: "Recovery + Movement",
-      focus: "Mobility and light cardio",
-      exercises: [
-        { name: "Brisk walk / garden laps", target: "10–20 mins", notes: "Keep it easy" },
-        { name: "Slow squats", target: "10 reps", notes: "Loosen legs" },
-        { name: "Hip mobility", target: "2 mins", notes: "Circles and openers" },
-        { name: "Torso twists", target: "1 min", notes: "Gentle" },
-        { name: "March on spot", target: "2 mins", notes: "Steady" },
-      ],
-    },
-    {
-      day: 3,
-      title: "Garden Strength Circuit B",
-      focus: "Balance, stamina, core",
-      exercises: [
-        { name: "Tempo squats", target: "12–15 reps", notes: "3 seconds down" },
-        { name: "Reverse lunges", target: "8–10 each leg", notes: "Controlled" },
-        { name: "Single-leg glute bridge", target: "8 each leg", notes: "Only if comfortable" },
-        { name: "Side steps", target: "40 sec", notes: "Light and quick" },
-        { name: "Dead bugs", target: "10 each side", notes: "Slow quality reps" },
-        { name: "Standing reach + brace", target: "10 reps", notes: "Core control" },
-      ],
-    },
+const STORAGE_KEY = "fit-around-life-v2";
+
+const CHALLENGES = [
+  "Let one of the kids be your coach for one round.",
+  "Do every squat with a 2-second pause at the bottom.",
+  "Add one extra minute of brisk marching at the end.",
+  "Do the whole session with perfect posture focus.",
+  "Let the kids count all your reps out loud.",
+  "Add 5 bonus glute bridges after each round.",
+  "Finish with 30 seconds of side steps with a smile.",
+  "Do one round extra slowly and cleanly.",
+];
+
+const SESSION_LIBRARY = {
+  lower_strength: {
+    label: "Lower Body Strength",
+    focus: "Legs, glutes and steady strength",
+    exercises: [
+      { name: "Squats", baseReps: 14, unit: "reps", notes: "Slow and controlled" },
+      { name: "Split squats", baseReps: 8, unit: "each leg", notes: "Use balance support if needed" },
+      { name: "Glute bridges", baseReps: 14, unit: "reps", notes: "Pause at the top" },
+      { name: "Fast march", baseTime: 30, unit: "sec", notes: "Steady cardio push" },
+      { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Brace the core throughout" },
+    ],
+  },
+  cardio_core: {
+    label: "Cardio + Core",
+    focus: "Raise the heart rate and stay stable through the trunk",
+    exercises: [
+      { name: "High knees or march", baseTime: 35, unit: "sec", notes: "Keep it light on the wrist" },
+      { name: "Side steps", baseTime: 35, unit: "sec", notes: "Stay quick and smooth" },
+      { name: "Dead bugs", baseReps: 10, unit: "each side", notes: "Slow quality reps" },
+      { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Tall posture, controlled breathing" },
+      { name: "Tempo squats", baseReps: 10, unit: "reps", notes: "3 seconds down" },
+    ],
+  },
+  recovery_mobility: {
+    label: "Recovery + Mobility",
+    focus: "Reset the body and keep moving without digging a hole",
+    exercises: [
+      { name: "Brisk walk / march", baseTime: 120, unit: "sec", notes: "Easy and smooth" },
+      { name: "Slow squats", baseReps: 10, unit: "reps", notes: "Loosen the legs" },
+      { name: "Hip mobility", baseTime: 90, unit: "sec", notes: "Circles and openers" },
+      { name: "Torso twists", baseTime: 60, unit: "sec", notes: "Gentle and rhythmic" },
+      { name: "Standing reach + brace", baseReps: 8, unit: "reps", notes: "Keep it easy" },
+    ],
+  },
+  balance_stability: {
+    label: "Balance + Stability",
+    focus: "Control, balance and small stabilisers",
+    exercises: [
+      { name: "Reverse lunges", baseReps: 8, unit: "each leg", notes: "Controlled and upright" },
+      { name: "Single-leg glute bridge", baseReps: 6, unit: "each leg", notes: "Only if comfortable" },
+      { name: "Standing reach + brace", baseReps: 10, unit: "reps", notes: "Core control" },
+      { name: "Side steps", baseTime: 30, unit: "sec", notes: "Stay light on your feet" },
+      { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Smooth controlled reps" },
+    ],
+  },
+  mixed_conditioning: {
+    label: "Mixed Conditioning",
+    focus: "A full-body session with a steady sweat",
+    exercises: [
+      { name: "Squats", baseReps: 12, unit: "reps", notes: "Comfortable rhythm" },
+      { name: "Reverse lunges", baseReps: 8, unit: "each leg", notes: "Stay controlled" },
+      { name: "Fast march", baseTime: 40, unit: "sec", notes: "Build the heart rate" },
+      { name: "Glute bridges", baseReps: 12, unit: "reps", notes: "Squeeze at the top" },
+      { name: "Dead bugs", baseReps: 8, unit: "each side", notes: "Brace and breathe" },
+    ],
+  },
+  posture_core: {
+    label: "Posture + Core",
+    focus: "Upper-body posture and central stability",
+    exercises: [
+      { name: "Invisible band pull-aparts", baseReps: 15, unit: "reps", notes: "Open the chest and back" },
+      { name: "Standing reach + brace", baseReps: 12, unit: "reps", notes: "Tall posture" },
+      { name: "Dead bugs", baseReps: 10, unit: "each side", notes: "Quality over speed" },
+      { name: "Torso twists", baseTime: 60, unit: "sec", notes: "Easy mobility" },
+      { name: "March on spot", baseTime: 90, unit: "sec", notes: "Keep moving" },
+    ],
+  },
+  lower_power_light: {
+    label: "Lower Body Power Light",
+    focus: "Livelier leg work without going too aggressive",
+    exercises: [
+      { name: "Tempo squats", baseReps: 12, unit: "reps", notes: "Control the lowering phase" },
+      { name: "Split squats", baseReps: 8, unit: "each leg", notes: "Stable and upright" },
+      { name: "Side steps", baseTime: 35, unit: "sec", notes: "Quick but relaxed" },
+      { name: "Glute bridges", baseReps: 14, unit: "reps", notes: "Strong squeeze at the top" },
+      { name: "Fast march", baseTime: 30, unit: "sec", notes: "Finish with energy" },
+    ],
+  },
+};
+
+const DEFAULT_STATE = {
+  history: [],
+  sessionIndex: 0,
+  rounds: "3",
+  effort: "good",
+  energy: 3,
+  wrist: 2,
+  notes: "",
+  kidsJoined: false,
+  workoutMode: false,
+  currentExerciseIndex: 0,
+  phase: "work",
+  timerRunning: false,
+  timeLeft: 40,
+  profile: {
+    fitnessLevel: 1,
+    preferredMinutes: 20,
+    wristSensitivity: true,
+    progressionScore: 0,
+    challengeCompletions: 0,
+    lastSessionType: "",
+  },
+};
+
+function loadSavedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_STATE;
+    return {
+      ...DEFAULT_STATE,
+      ...JSON.parse(raw),
+      profile: {
+        ...DEFAULT_STATE.profile,
+        ...(JSON.parse(raw).profile || {}),
+      },
+    };
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
+
+function formatTarget(ex) {
+  if (ex.baseReps != null) return `${ex.baseReps} ${ex.unit}`;
+  return `${ex.baseTime} ${ex.unit}`;
+}
+
+function cloneExercise(ex) {
+  return { ...ex };
+}
+
+function isoFromLocaleDate(dateStr) {
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return dateStr;
+  const [day, month, year] = parts;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function getChallengeForDate(todayKey) {
+  if (!todayKey) return CHALLENGES[0];
+  const seed = todayKey
+    .split("-")
+    .join("")
+    .split("")
+    .reduce((sum, n) => sum + Number(n), 0);
+  return CHALLENGES[seed % CHALLENGES.length];
+}
+
+function getStreak(history) {
+  if (!history.length) return 0;
+  const uniqueDates = [...new Set(history.map((item) => isoFromLocaleDate(item.date)))].sort().reverse();
+
+  let streak = 0;
+  const current = new Date();
+  current.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < uniqueDates.length; i++) {
+    const expected = new Date(current);
+    expected.setDate(current.getDate() - i);
+    const expectedKey = expected.toISOString().slice(0, 10);
+    if (uniqueDates[i] === expectedKey) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function chooseSessionType(history, profile, todayKey) {
+  const allTypes = Object.keys(SESSION_LIBRARY);
+  const last = history[0];
+  const lastType = profile.lastSessionType || "";
+
+  if (last?.effort === "hard" || last?.energy <= 2) {
+    return "recovery_mobility";
+  }
+
+  if (last?.wrist >= 4) {
+    return "posture_core";
+  }
+
+  const preferredOrder = [
+    "lower_strength",
+    "cardio_core",
+    "balance_stability",
+    "mixed_conditioning",
+    "posture_core",
+    "lower_power_light",
+    "recovery_mobility",
   ];
 
-  const loadState = () => {
-    try {
-      const saved = localStorage.getItem("garden-workout-tracker-v1");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
+  const seed = todayKey
+    .split("-")
+    .join("")
+    .split("")
+    .reduce((sum, n) => sum + Number(n), 0);
+
+  let candidate = preferredOrder[seed % preferredOrder.length];
+
+  if (candidate === lastType) {
+    const idx = (preferredOrder.indexOf(candidate) + 1) % preferredOrder.length;
+    candidate = preferredOrder[idx];
+  }
+
+  if (!allTypes.includes(candidate)) return "lower_strength";
+  return candidate;
+}
+
+function buildSession(typeKey, profile, history) {
+  const base = SESSION_LIBRARY[typeKey];
+  const progressionLevel = profile.fitnessLevel || 1;
+  const previous = history[0];
+
+  let roundGuide = progressionLevel <= 1 ? "Aim for 2–3 rounds today." : "Aim for 3 rounds today.";
+  let coachNote = "A sensible session for today. Stay smooth, not heroic.";
+
+  const exercises = base.exercises.map((raw) => {
+    const ex = cloneExercise(raw);
+
+    if (ex.baseReps != null) {
+      let reps = ex.baseReps + Math.max(0, progressionLevel - 1) * 2;
+      if (previous?.effort === "hard" || previous?.energy <= 2) reps = Math.max(ex.baseReps, reps - 2);
+      ex.target = `${reps} ${ex.unit}`;
+    } else {
+      let time = ex.baseTime + Math.max(0, progressionLevel - 1) * 5;
+      if (previous?.effort === "hard" || previous?.energy <= 2) time = Math.max(ex.baseTime, time - 5);
+      ex.target = `${time} ${ex.unit}`;
     }
+
+    if (previous?.wrist >= 4 && ex.name.toLowerCase().includes("plank")) {
+      ex.name = "Dead bugs";
+      ex.notes = "Swap plank out to protect the wrist";
+      ex.target = `${10 + Math.max(0, progressionLevel - 1) * 2} each side`;
+    }
+
+    return ex;
+  });
+
+  if (previous?.effort === "good" && previous?.energy >= 3 && previous?.wrist <= 2) {
+    coachNote = "Nice work last time. This session nudges things forward a touch.";
+    roundGuide = progressionLevel <= 1 ? "Aim for 3 rounds today." : "Aim for 3–4 rounds today.";
+  }
+
+  if (previous?.effort === "hard") {
+    coachNote = "Last session sounded like enough. Keep this one controlled and leave a bit in the tank.";
+  }
+
+  if (previous?.wrist >= 4) {
+    coachNote = "The wrist looked a bit grumpy last time, so today stays friendly and controlled.";
+  }
+
+  if (previous?.energy <= 2) {
+    coachNote += " An 80% session is a win today.";
+  }
+
+  return {
+    typeKey,
+    title: `${base.label} · Level ${profile.fitnessLevel}`,
+    focus: base.focus,
+    focusLine: base.focus,
+    coachNote,
+    roundGuide,
+    exercises,
   };
+}
 
-  const [history, setHistory] = useState([]);
-  const [sessionIndex, setSessionIndex] = useState(0);
-  const [rounds, setRounds] = useState("3");
-  const [effort, setEffort] = useState("good");
-  const [energy, setEnergy] = useState(3);
-  const [wrist, setWrist] = useState(2);
-  const [notes, setNotes] = useState("");
-  const [kidsJoined, setKidsJoined] = useState(false);
-  const [todayKey, setTodayKey] = useState("");
-
-  const [workoutMode, setWorkoutMode] = useState(false);
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-  const [phase, setPhase] = useState("work");
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(40);
+export default function App() {
+  const initial = useMemo(() => loadSavedState(), []);
+  const [history, setHistory] = useState(initial.history);
+  const [sessionIndex, setSessionIndex] = useState(initial.sessionIndex);
+  const [rounds, setRounds] = useState(initial.rounds);
+  const [effort, setEffort] = useState(initial.effort);
+  const [energy, setEnergy] = useState(initial.energy);
+  const [wrist, setWrist] = useState(initial.wrist);
+  const [notes, setNotes] = useState(initial.notes);
+  const [kidsJoined, setKidsJoined] = useState(initial.kidsJoined);
+  const [workoutMode, setWorkoutMode] = useState(initial.workoutMode);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(initial.currentExerciseIndex);
+  const [phase, setPhase] = useState(initial.phase);
+  const [timerRunning, setTimerRunning] = useState(initial.timerRunning);
+  const [timeLeft, setTimeLeft] = useState(initial.timeLeft);
+  const [profile, setProfile] = useState(initial.profile);
+  const [todayKey, setTodayKey] = useState(new Date().toISOString().slice(0, 10));
+  const [challengeDone, setChallengeDone] = useState(false);
 
   useEffect(() => {
-    const saved = loadState();
-    if (saved) {
-      setHistory(saved.history || []);
-      setSessionIndex(saved.sessionIndex || 0);
-    }
-    setTodayKey(new Date().toISOString().slice(0, 10));
+    const today = new Date().toISOString().slice(0, 10);
+    setTodayKey(today);
+
+    const lastSavedDate = history[0] ? isoFromLocaleDate(history[0].date) : "";
+    setChallengeDone(lastSavedDate === today && !!history[0]?.challengeDone);
   }, []);
 
   useEffect(() => {
     localStorage.setItem(
-      "garden-workout-tracker-v1",
-      JSON.stringify({ history, sessionIndex })
+      STORAGE_KEY,
+      JSON.stringify({
+        history,
+        sessionIndex,
+        rounds,
+        effort,
+        energy,
+        wrist,
+        notes,
+        kidsJoined,
+        workoutMode,
+        currentExerciseIndex,
+        phase,
+        timerRunning,
+        timeLeft,
+        profile,
+      })
     );
-  }, [history, sessionIndex]);
+  }, [
+    history,
+    sessionIndex,
+    rounds,
+    effort,
+    energy,
+    wrist,
+    notes,
+    kidsJoined,
+    workoutMode,
+    currentExerciseIndex,
+    phase,
+    timerRunning,
+    timeLeft,
+    profile,
+  ]);
 
-  const baseSession = starterPlan[sessionIndex % starterPlan.length];
-  const cycleNumber = Math.floor(sessionIndex / starterPlan.length) + 1;
+  const streakCount = useMemo(() => getStreak(history), [history]);
+  const currentChallenge = useMemo(() => getChallengeForDate(todayKey), [todayKey]);
 
-  function bumpReps(target) {
-    const map = {
-      "15–20 reps": "18–22 reps",
-      "10 each leg": "12 each leg",
-      "15 reps": "18 reps",
-      "12–15 reps": "14–16 reps",
-      "8–10 each leg": "10 each leg",
-      "8 each leg": "10 each leg",
-      "10 reps": "12 reps",
-    };
-    return map[target] || target;
-  }
+  const sessionType = useMemo(
+    () => chooseSessionType(history, profile, todayKey),
+    [history, profile, todayKey]
+  );
 
-  const adaptedSession = useMemo(() => {
-    const previous = history[0];
-    let title = `${baseSession.title} · Cycle ${cycleNumber}`;
-    let coachNote = "A solid default session. Keep it smooth, not heroic.";
-    let roundGuide = "Aim for 3 rounds today.";
-    let focusLine = "Steady strength with wrist-friendly movement.";
-    let exerciseAdjustments = baseSession.exercises.map((e) => ({ ...e }));
-
-    if (previous) {
-      if (previous.effort === "good") {
-        coachNote = "Nice work last time. Nudge things forward a touch today.";
-        roundGuide = "Aim for 3–4 rounds today depending on time and energy.";
-        focusLine = "A slightly progressive session to build momentum.";
-        exerciseAdjustments = exerciseAdjustments.map((e, i) =>
-          i < 3 ? { ...e, target: bumpReps(e.target) } : e
-        );
-      }
-      if (previous.effort === "hard") {
-        coachNote = "Last session sounded like enough. Today is about quality, not chasing volume.";
-        roundGuide = "Aim for 2–3 rounds today.";
-        focusLine = "Keep the movement clean and leave a bit in the tank.";
-      }
-      if (previous.wrist >= 4) {
-        title += " · Wrist Friendly";
-        coachNote = "Your last check-in suggested the wrist was grumpy. Keep all loading off the hands today.";
-        focusLine = "Protect the wrist and keep the rest of the body moving.";
-        exerciseAdjustments = exerciseAdjustments.map((e) =>
-          e.name.toLowerCase().includes("plank")
-            ? { ...e, name: "Dead bugs", target: "10 each side", notes: "Swap plank out to protect wrist" }
-            : e
-        );
-      }
-      if (previous.energy <= 2) {
-        coachNote += " Energy looked a bit low, so an 80% session is a win.";
-      }
-    }
-
-    return {
-      ...baseSession,
-      title,
-      coachNote,
-      roundGuide,
-      focusLine,
-      exercises: exerciseAdjustments,
-    };
-  }, [baseSession, cycleNumber, history]);
+  const adaptedSession = useMemo(
+    () => buildSession(sessionType, profile, history),
+    [sessionType, profile, history]
+  );
 
   useEffect(() => {
     if (!workoutMode || !timerRunning) return;
@@ -184,116 +393,6 @@ export default function App() {
 
     return () => clearInterval(id);
   }, [workoutMode, timerRunning, phase, currentExerciseIndex, adaptedSession.exercises.length]);
-
-  function completeSession() {
-    const entry = {
-      date: new Date().toLocaleDateString(),
-      sessionNumber: sessionIndex + 1,
-      sessionTitle: adaptedSession.title,
-      rounds,
-      effort,
-      energy,
-      wrist,
-      notes,
-      kidsJoined,
-    };
-    setHistory((prev) => [entry, ...prev]);
-    setSessionIndex((prev) => prev + 1);
-    setRounds("3");
-    setEffort("good");
-    setEnergy(3);
-    setWrist(2);
-    setNotes("");
-    setKidsJoined(false);
-    stopWorkoutMode();
-  }
-
-  function resetAll() {
-    setHistory([]);
-    setSessionIndex(0);
-    setRounds("3");
-    setEffort("good");
-    setEnergy(3);
-    setWrist(2);
-    setNotes("");
-    setKidsJoined(false);
-    localStorage.removeItem("garden-workout-tracker-v1");
-    stopWorkoutMode();
-  }
-
-  const currentChallenge = useMemo(() => {
-    const challenges = [
-      "Let one of the kids be your coach for one round.",
-      "Do every squat with a 2-second pause at the bottom.",
-      "Add one extra minute of brisk marching at the end.",
-      "Do the whole session with perfect posture focus.",
-      "Let the kids count all your reps out loud.",
-      "Add 5 bonus glute bridges after each round.",
-      "Finish with 30 seconds of side steps with a smile.",
-      "Do one round extra slowly and cleanly.",
-    ];
-
-    if (!todayKey) return challenges[0];
-
-    const seed = todayKey
-      .split("-")
-      .join("")
-      .split("")
-      .reduce((sum, n) => sum + Number(n), 0);
-
-    return challenges[seed % challenges.length];
-  }, [todayKey]);
-
-  const streakCount = useMemo(() => {
-    if (history.length === 0) return 0;
-
-    const uniqueDates = [
-      ...new Set(
-        history.map((item) => {
-          const parts = item.date.split("/");
-          if (parts.length === 3) {
-            const [day, month, year] = parts;
-            return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-          }
-          return item.date;
-        })
-      ),
-    ].sort().reverse();
-
-    let streak = 0;
-    const current = new Date();
-    current.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const expected = new Date(current);
-      expected.setDate(current.getDate() - i);
-      const expectedKey = expected.toISOString().slice(0, 10);
-
-      if (uniqueDates[i] === expectedKey) {
-        streak += 1;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  }, [history]);
-
-  const shareText = useMemo(() => {
-    const latest = history[0];
-    if (!latest) return "No sessions logged yet.";
-    return `Latest workout update:
-Session: ${latest.sessionTitle}
-Date: ${latest.date}
-Rounds: ${latest.rounds}
-Effort: ${latest.effort}
-Energy: ${latest.energy}/5
-Wrist: ${latest.wrist}/5
-Kids joined: ${latest.kidsJoined ? "Yes" : "No"}
-Challenge of the day: ${currentChallenge}
-Current streak: ${streakCount} day${streakCount === 1 ? "" : "s"}
-Notes: ${latest.notes || "None"}`;
-  }, [history, currentChallenge, streakCount]);
 
   function startWorkoutMode() {
     setWorkoutMode(true);
@@ -333,8 +432,93 @@ Notes: ${latest.notes || "None"}`;
     }
   }
 
+  function completeSession() {
+    let nextFitnessLevel = profile.fitnessLevel;
+    let nextProgressionScore = profile.progressionScore;
+
+    if (effort === "good" && energy >= 3 && wrist <= 2) {
+      nextProgressionScore += 1;
+    } else if (effort === "hard" || energy <= 2 || wrist >= 4) {
+      nextProgressionScore = Math.max(0, nextProgressionScore - 1);
+    }
+
+    if (nextProgressionScore >= 3) {
+      nextFitnessLevel += 1;
+      nextProgressionScore = 0;
+    }
+
+    const entry = {
+      date: new Date().toLocaleDateString(),
+      sessionNumber: sessionIndex + 1,
+      sessionTitle: adaptedSession.title,
+      sessionType: adaptedSession.typeKey,
+      rounds,
+      effort,
+      energy,
+      wrist,
+      notes,
+      kidsJoined,
+      challengeDone,
+    };
+
+    setHistory((prev) => [entry, ...prev]);
+    setSessionIndex((prev) => prev + 1);
+    setProfile((prev) => ({
+      ...prev,
+      fitnessLevel: nextFitnessLevel,
+      progressionScore: nextProgressionScore,
+      challengeCompletions: prev.challengeCompletions + (challengeDone ? 1 : 0),
+      lastSessionType: adaptedSession.typeKey,
+    }));
+
+    setRounds(nextFitnessLevel <= 1 ? "3" : "3");
+    setEffort("good");
+    setEnergy(3);
+    setWrist(2);
+    setNotes("");
+    setKidsJoined(false);
+    setChallengeDone(false);
+    stopWorkoutMode();
+  }
+
+  function resetAll() {
+    localStorage.removeItem(STORAGE_KEY);
+    setHistory([]);
+    setSessionIndex(0);
+    setRounds("3");
+    setEffort("good");
+    setEnergy(3);
+    setWrist(2);
+    setNotes("");
+    setKidsJoined(false);
+    setWorkoutMode(false);
+    setCurrentExerciseIndex(0);
+    setPhase("work");
+    setTimerRunning(false);
+    setTimeLeft(40);
+    setProfile(DEFAULT_STATE.profile);
+    setChallengeDone(false);
+  }
+
   const currentExercise = adaptedSession.exercises[currentExerciseIndex];
   const progressPercent = ((currentExerciseIndex + 1) / adaptedSession.exercises.length) * 100;
+
+  const shareText = useMemo(() => {
+    const latest = history[0];
+    if (!latest) return "No sessions logged yet.";
+    return `Latest workout update:
+Session: ${latest.sessionTitle}
+Date: ${latest.date}
+Rounds: ${latest.rounds}
+Effort: ${latest.effort}
+Energy: ${latest.energy}/5
+Wrist: ${latest.wrist}/5
+Kids joined: ${latest.kidsJoined ? "Yes" : "No"}
+Challenge done: ${latest.challengeDone ? "Yes" : "No"}
+Fitness level: ${profile.fitnessLevel}
+Current streak: ${streakCount} day${streakCount === 1 ? "" : "s"}
+Notes: ${latest.notes || "None"}`;
+  }, [history, profile.fitnessLevel, streakCount]);
 
   return (
     <div style={pageStyle}>
@@ -383,13 +567,6 @@ Notes: ${latest.notes || "None"}`;
             margin-top: 10px !important;
             white-space: normal !important;
           }
-          .fal-glance-row {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-          }
-          .fal-glance-value {
-            text-align: left !important;
-          }
         }
       `}</style>
 
@@ -414,8 +591,8 @@ Notes: ${latest.notes || "None"}`;
                 <div style={miniMetaValue}>{adaptedSession.title}</div>
               </div>
               <div style={miniMetaCard}>
-                <div style={miniMetaLabel}>Suggested volume</div>
-                <div style={miniMetaValue}>{adaptedSession.roundGuide}</div>
+                <div style={miniMetaLabel}>Growth level</div>
+                <div style={miniMetaValue}>Level {profile.fitnessLevel}</div>
               </div>
             </div>
           </div>
@@ -427,13 +604,9 @@ Notes: ${latest.notes || "None"}`;
             </div>
             <div className="fal-header-actions" style={{ marginTop: "18px" }}>
               {!workoutMode ? (
-                <button onClick={startWorkoutMode} style={bigPrimaryButton}>
-                  Start Workout Mode
-                </button>
+                <button onClick={startWorkoutMode} style={bigPrimaryButton}>Start Workout Mode</button>
               ) : (
-                <button onClick={stopWorkoutMode} style={bigSecondaryButton}>
-                  Exit Workout Mode
-                </button>
+                <button onClick={stopWorkoutMode} style={bigSecondaryButton}>Exit Workout Mode</button>
               )}
             </div>
           </div>
@@ -490,9 +663,7 @@ Notes: ${latest.notes || "None"}`;
             </div>
 
             <div style={finishRow}>
-              <button onClick={completeSession} style={bigPrimaryButton}>
-                Finish & Log Session
-              </button>
+              <button onClick={completeSession} style={bigPrimaryButton}>Finish & Log Session</button>
             </div>
           </div>
         )}
@@ -558,27 +729,13 @@ Notes: ${latest.notes || "None"}`;
 
                 <label>
                   <div style={labelStyle}>Energy (1 low – 5 high)</div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={energy}
-                    onChange={(e) => setEnergy(Number(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
+                  <input type="range" min="1" max="5" value={energy} onChange={(e) => setEnergy(Number(e.target.value))} style={{ width: "100%" }} />
                   <div style={{ color: BRAND.softText, marginTop: "6px" }}>{energy}/5</div>
                 </label>
 
                 <label>
                   <div style={labelStyle}>Wrist discomfort (1 fine – 5 bad)</div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={wrist}
-                    onChange={(e) => setWrist(Number(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
+                  <input type="range" min="1" max="5" value={wrist} onChange={(e) => setWrist(Number(e.target.value))} style={{ width: "100%" }} />
                   <div style={{ color: BRAND.softText, marginTop: "6px" }}>{wrist}/5</div>
                 </label>
               </div>
@@ -599,16 +756,15 @@ Notes: ${latest.notes || "None"}`;
                 <span>The kids joined in today</span>
               </label>
 
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px", color: BRAND.navy }}>
+                <input type="checkbox" checked={challengeDone} onChange={(e) => setChallengeDone(e.target.checked)} />
+                <span>Challenge completed today</span>
+              </label>
+
               <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "22px" }}>
-                <button onClick={completeSession} style={primaryButton}>
-                  Complete session and move to next
-                </button>
-                <button onClick={() => navigator.clipboard.writeText(shareText)} style={secondaryButton}>
-                  Copy summary for ChatGPT
-                </button>
-                <button onClick={resetAll} style={ghostButton}>
-                  Reset plan
-                </button>
+                <button onClick={completeSession} style={primaryButton}>Complete session and move to next</button>
+                <button onClick={() => navigator.clipboard.writeText(shareText)} style={secondaryButton}>Copy summary for ChatGPT</button>
+                <button onClick={resetAll} style={ghostButton}>Reset plan</button>
               </div>
             </div>
           </div>
@@ -617,9 +773,7 @@ Notes: ${latest.notes || "None"}`;
             <div style={streakCard}>
               <div style={sectionLabelLight}>Momentum</div>
               <h2 style={{ marginTop: "6px", marginBottom: "10px" }}>Streak counter</h2>
-              <div style={{ fontSize: "52px", fontWeight: 800, lineHeight: 1 }}>
-                {streakCount}
-              </div>
+              <div style={{ fontSize: "52px", fontWeight: 800, lineHeight: 1 }}>{streakCount}</div>
               <p style={{ color: "#d6e5dd", marginTop: "10px", marginBottom: 0 }}>
                 day{streakCount === 1 ? "" : "s"} in a row
               </p>
@@ -627,9 +781,7 @@ Notes: ${latest.notes || "None"}`;
 
             <div style={warmCardStyle}>
               <div style={sectionLabel}>Today’s extra twist</div>
-              <h2 style={{ marginTop: "6px", color: BRAND.navy, marginBottom: "10px" }}>
-                Challenge of the day
-              </h2>
+              <h2 style={{ marginTop: "6px", color: BRAND.navy, marginBottom: "10px" }}>Challenge of the day</h2>
               <div style={{ color: BRAND.navy, lineHeight: 1.6 }}>{currentChallenge}</div>
             </div>
 
@@ -637,21 +789,21 @@ Notes: ${latest.notes || "None"}`;
               <div style={sectionLabel}>Snapshot</div>
               <h2 style={sectionTitle}>Today at a glance</h2>
               <div style={{ display: "grid", gap: "12px" }}>
-                <div className="fal-glance-row" style={glanceRow}>
-                  <span style={glanceKey}>Session</span>
-                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.title}</span>
+                <div style={glanceRow}>
+                  <span style={glanceKey}>Session type</span>
+                  <span style={glanceValue}>{SESSION_LIBRARY[adaptedSession.typeKey].label}</span>
                 </div>
-                <div className="fal-glance-row" style={glanceRow}>
-                  <span style={glanceKey}>Focus</span>
-                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.focus}</span>
+                <div style={glanceRow}>
+                  <span style={glanceKey}>Level</span>
+                  <span style={glanceValue}>{profile.fitnessLevel}</span>
                 </div>
-                <div className="fal-glance-row" style={glanceRow}>
+                <div style={glanceRow}>
                   <span style={glanceKey}>Suggested rounds</span>
-                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.roundGuide}</span>
+                  <span style={glanceValue}>{adaptedSession.roundGuide}</span>
                 </div>
-                <div className="fal-glance-row" style={glanceRow}>
-                  <span style={glanceKey}>Exercises</span>
-                  <span className="fal-glance-value" style={glanceValue}>{adaptedSession.exercises.length}</span>
+                <div style={glanceRow}>
+                  <span style={glanceKey}>Challenges completed</span>
+                  <span style={glanceValue}>{profile.challengeCompletions}</span>
                 </div>
               </div>
             </div>
@@ -660,10 +812,10 @@ Notes: ${latest.notes || "None"}`;
               <div style={sectionLabel}>How it works</div>
               <h2 style={sectionTitle}>How this works</h2>
               <ol style={{ paddingLeft: "20px", color: BRAND.navy, lineHeight: 1.8, marginBottom: 0 }}>
-                <li>Do the suggested garden session.</li>
-                <li>Log how it went at the end.</li>
-                <li>The next session adjusts based on effort, energy and wrist score.</li>
-                <li>Copy the summary and paste it into ChatGPT if you want to refine it further.</li>
+                <li>Sessions rotate for variety and freshness.</li>
+                <li>Hard days are followed by lighter choices when needed.</li>
+                <li>Consistent strong sessions build your fitness level over time.</li>
+                <li>Your progress is saved locally on this device.</li>
               </ol>
             </div>
 
@@ -685,7 +837,7 @@ Notes: ${latest.notes || "None"}`;
                         Energy: {item.energy}/5 · Wrist: {item.wrist}/5
                       </div>
                       <div style={{ color: BRAND.navy }}>
-                        Kids joined: {item.kidsJoined ? "Yes" : "No"}
+                        Kids joined: {item.kidsJoined ? "Yes" : "No"} · Challenge: {item.challengeDone ? "Yes" : "No"}
                       </div>
                       {item.notes && <div style={{ marginTop: "8px", color: BRAND.softText }}>“{item.notes}”</div>}
                     </div>
@@ -701,7 +853,7 @@ Notes: ${latest.notes || "None"}`;
               <p>• No equipment</p>
               <p>• Wrist-friendly choices</p>
               <p>• Kid-compatible sessions</p>
-              <p>• Flexible enough for holidays and family time</p>
+              <p>• Designed to grow with your fitness</p>
             </div>
           </div>
         </div>
@@ -745,15 +897,7 @@ function BrandLogo() {
             <span style={{ color: BRAND.green }}>Around </span>
             <span style={{ color: BRAND.navy }}>Life</span>
           </div>
-          <div
-            style={{
-              marginTop: "10px",
-              fontSize: "16px",
-              color: BRAND.softText,
-              fontStyle: "italic",
-              letterSpacing: "0.01em",
-            }}
-          >
+          <div style={{ marginTop: "10px", fontSize: "16px", color: BRAND.softText, fontStyle: "italic", letterSpacing: "0.01em" }}>
             Your space. Your time. Your workout.
           </div>
         </div>
@@ -1073,13 +1217,6 @@ const timerCircle = {
   alignItems: "center",
   justifyContent: "center",
   boxShadow: "inset 0 2px 10px rgba(255,255,255,0.8)",
-};
-
-const exerciseStage = {
-  display: "grid",
-  justifyItems: "center",
-  gap: "14px",
-  padding: "20px 0 8px 0",
 };
 
 const targetPill = {
